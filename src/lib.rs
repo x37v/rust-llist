@@ -31,6 +31,7 @@ impl<T> Node<T> {
     }
 }
 
+//XXX LOOK INTO THIS!!!
 unsafe impl <T> Sync for Node<T> where T: Sync {}
 
 impl<T> List<T> {
@@ -63,24 +64,51 @@ mod tests {
 
     #[test]
     fn it_builds() {
-        let mut n = Node::new(23);
+        let mut len: usize = 0;
+        let n = Node::new(23);
+
+        assert_eq!(n.value, 23);
         let mut l = List::new();
-        l.push_front(n);
-        assert_eq!(l.length(), 1);
+        assert_eq!(l.length(), len);
 
-        n = Node::new(345);
         l.push_front(n);
-        assert_eq!(l.length(), 2);
+        len = len + 1;
+        assert_eq!(l.length(), len);
 
-        let mut c = Node::new(35);
+        let n = Node::new(345);
+        assert_eq!(n.value, 345);
+        l.push_front(n);
+        len = len + 1;
+        assert_eq!(l.length(), len);
+
+        /*
+        let n = Node::new(1);
+        let cl = n.clone(); //ERROR
+
+        l.push_front(n);
+        len = len + 1;
+        assert_eq!(l.length(), len);
+
+        l.push_front(cl);
+        len = len + 1;
+        assert_eq!(l.length(), len);
+        */
+
+        let c = Node::new(35);
         let child = thread::spawn(move || {
-            assert_eq!(l.length(), 2);
+            assert_eq!(l.length(), len);
+
             l.push_front(c);
-            assert_eq!(l.length(), 3);
-            let mut x = Node::new(45);
+            len = len + 1;
+            assert_eq!(l.length(), len);
+
+            let x = Node::new(45);
             l.push_front(x);
-            assert_eq!(l.length(), 4);
+            len = len + 1;
+            assert_eq!(l.length(), len);
         });
-        child.join();
+        if let Err(e) = child.join() {
+            panic!(e);
+        }
     }
 }
