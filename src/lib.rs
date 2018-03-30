@@ -1,23 +1,16 @@
-use std::cell::RefCell;
-use std::sync::Arc;
-use std::thread;
+use std::boxed::Box;
 
 pub enum Link<T> {
     None,
-    Some(Arc<Node<T>>)
+    Some(Box<Node<T>>)
 }
 
-impl<T> Clone for Link<T> {
-    fn clone(&self) -> Self {
-        match self {
-            &Link::None => Link::None,
-            &Link::Some(ref item) => Link::Some(item.clone())
-        }
-    }
+impl<T> Default for Link<T> {
+    fn default() -> Self { Link::None }
 }
 
 pub struct Node<T> {
-    next: RefCell<Link<T>>,
+    next: Link<T>,
     value: T
 }
 
@@ -26,39 +19,40 @@ pub struct List<T> {
 }
 
 impl<T> Node<T> {
-    fn new(v: T) -> Arc<Self> {
-        Arc::new(Node { next: RefCell::new(Link::None), value: v })
+    fn new(v: T) -> Box<Self> {
+        Box::new(Node { next: Link::default(), value: v })
+    }
+}
+
+impl<T> List<T> {
+    pub fn new() -> Self {
+        List { head: Link::default() }
+    }
+
+    pub fn push_front(&mut self, mut node: Box<Node<T>>) -> () {
+        std::mem::swap(&mut node.next, &mut self.head);
+        self.head = Link::Some(node);
+    }
+
+    pub fn length(&self) -> usize {
+        let mut cur = &self.head;
+        let mut cnt: usize = 0;
+        while let &Link::Some(ref node) = cur {
+            cur = &node.next;
+            cnt += 1;
+        }
+        cnt
     }
 }
 
 //XXX LOOK INTO THIS!!!
 unsafe impl <T> Sync for Node<T> where T: Sync {}
 
-impl<T> List<T> {
-    pub fn new() -> Self {
-        List { head: Link::None }
-    }
-
-    pub fn push_front(&mut self, node: Arc<Node<T>>) -> () {
-        *node.next.borrow_mut() = self.head.clone();
-        self.head = Link::Some(node);
-    }
-
-    pub fn length(&self) -> usize {
-        let mut cur = self.head.clone();
-        let mut cnt: usize = 0;
-        while let Link::Some(node) = cur {
-            cur = node.next.borrow().clone();
-            cnt += 1;
-        }
-
-        cnt
-    }
-}
-
 
 #[cfg(test)]
+use std::thread;
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -107,6 +101,7 @@ mod tests {
             len = len + 1;
             assert_eq!(l.length(), len);
         });
+
         if let Err(e) = child.join() {
             panic!(e);
         }
