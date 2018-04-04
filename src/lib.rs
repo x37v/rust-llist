@@ -1,5 +1,7 @@
 use std::boxed::Box;
+use std::ops::Deref;
 
+#[derive(Debug)]
 enum Link<T> {
     None,
     Some(Box<Node<T>>)
@@ -9,6 +11,7 @@ impl<T> Default for Link<T> {
     fn default() -> Self { Link::None }
 }
 
+#[derive(Debug)]
 pub struct Node<T> {
     next: Link<T>,
     value: T
@@ -21,6 +24,14 @@ pub struct List<T> {
 impl<T> Node<T> {
     fn new(v: T) -> Box<Self> {
         Box::new(Node { next: Link::default(), value: v })
+    }
+}
+
+impl<T> Deref for Node<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
     }
 }
 
@@ -129,6 +140,15 @@ mod tests {
         if let Err(e) = child.join() {
             panic!(e);
         }
+    }
+
+    #[test]
+    fn can_deref() {
+        let x = Node::new(634);
+        assert_eq!(x.value, 634);
+        assert_eq!(&634, x.deref().deref());
+        assert_eq!(&634, &**x);
+        assert_eq!(634, **x);
     }
 
     #[test]
