@@ -33,6 +33,18 @@ impl<T> List<T> {
         std::mem::swap(&mut node.next, &mut self.head);
         self.head = Link::Some(node);
     }
+    
+    pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
+        let mut ret = Link::None;
+        std::mem::swap(&mut ret, &mut self.head);
+        match ret {
+            Link::Some(mut node) => {
+                std::mem::swap(&mut node.next, &mut self.head);
+                Some(node)
+            },
+            Link::None => None
+        }
+    }
 
     pub fn length(&self) -> usize {
         let mut cur = &self.head;
@@ -57,7 +69,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_builds() {
+    fn can_push() {
         let mut len: usize = 0;
         let n = Node::new(23);
 
@@ -74,19 +86,6 @@ mod tests {
         l.push_front(n);
         len = len + 1;
         assert_eq!(l.length(), len);
-
-        /*
-        let n = Node::new(1);
-        let cl = n.clone(); //ERROR
-
-        l.push_front(n);
-        len = len + 1;
-        assert_eq!(l.length(), len);
-
-        l.push_front(cl);
-        len = len + 1;
-        assert_eq!(l.length(), len);
-        */
 
         let c = Node::new(35);
         let child = thread::spawn(move || {
@@ -105,5 +104,72 @@ mod tests {
         if let Err(e) = child.join() {
             panic!(e);
         }
+    }
+
+    #[test]
+    fn can_thread() {
+        let mut len: usize = 0;
+        let n = Node::new(23);
+
+        assert_eq!(n.value, 23);
+        let mut l = List::new();
+        assert_eq!(l.length(), len);
+
+        let c = Node::new(35);
+        let child = thread::spawn(move || {
+            assert_eq!(l.length(), len);
+
+            l.push_front(c);
+            len = len + 1;
+            assert_eq!(l.length(), len);
+
+            let x = Node::new(45);
+            l.push_front(x);
+            len = len + 1;
+            assert_eq!(l.length(), len);
+        });
+
+        if let Err(e) = child.join() {
+            panic!(e);
+        }
+    }
+
+    #[test]
+    fn can_pop() {
+        let mut l = List::new();
+        assert_eq!(l.length(), 0);
+
+        for i in 1..11 {
+            let x = Node::new(i);
+            l.push_front(x);
+            assert_eq!(l.length(), i);
+        }
+
+        for i in (1..11).rev() {
+            assert_eq!(l.length(), i);
+            let mut n = l.pop_front();
+            assert!(n.is_some());
+            assert_eq!(n.unwrap().value, i);
+        }
+
+        assert_eq!(l.length(), 0);
+        let n = l.pop_front();
+        assert!(n.is_none());
+
+        l.push_front(Node::new(42));
+        assert_eq!(l.length(), 1);
+        l.push_front(Node::new(2084));
+        assert_eq!(l.length(), 2);
+
+        let mut n = l.pop_front();
+        assert!(n.is_some());
+        assert_eq!(n.unwrap().value, 2084);
+        assert_eq!(l.length(), 1);
+
+        n = l.pop_front();
+        assert!(n.is_some());
+        assert_eq!(n.unwrap().value, 42);
+        assert_eq!(l.length(), 0);
+        assert!(l.pop_front().is_none());
     }
 }
