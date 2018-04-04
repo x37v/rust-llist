@@ -1,6 +1,6 @@
 use std::boxed::Box;
 
-pub enum Link<T> {
+enum Link<T> {
     None,
     Some(Box<Node<T>>)
 }
@@ -57,15 +57,12 @@ impl<T> List<T> {
     }
 }
 
-//XXX LOOK INTO THIS!!!
-unsafe impl <T> Sync for Node<T> where T: Sync {}
+unsafe impl <T> Send for Node<T> where T: Send {}
 
-
-#[cfg(test)]
-use std::thread;
 
 #[cfg(test)]
 mod tests {
+    use std::thread;
     use super::*;
 
     #[test]
