@@ -22,7 +22,7 @@ pub struct List<T> {
 }
 
 impl<T> Node<T> {
-    fn new(v: T) -> Box<Self> {
+    pub fn new_boxed(v: T) -> Box<Self> {
         Box::new(Node { next: Link::default(), value: v })
     }
 }
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn can_push() {
         let mut len: usize = 0;
-        let n = Node::new(23);
+        let n = Node::new_boxed(23);
 
         assert_eq!(n.value, 23);
         let mut l = List::new();
@@ -89,13 +89,13 @@ mod tests {
         len = len + 1;
         assert_eq!(l.length(), len);
 
-        let n = Node::new(345);
+        let n = Node::new_boxed(345);
         assert_eq!(n.value, 345);
         l.push_front(n);
         len = len + 1;
         assert_eq!(l.length(), len);
 
-        let c = Node::new(35);
+        let c = Node::new_boxed(35);
         let child = thread::spawn(move || {
             assert_eq!(l.length(), len);
 
@@ -103,7 +103,7 @@ mod tests {
             len = len + 1;
             assert_eq!(l.length(), len);
 
-            let x = Node::new(45);
+            let x = Node::new_boxed(45);
             l.push_front(x);
             len = len + 1;
             assert_eq!(l.length(), len);
@@ -117,13 +117,13 @@ mod tests {
     #[test]
     fn can_thread() {
         let mut len: usize = 0;
-        let n = Node::new(23);
+        let n = Node::new_boxed(23);
 
         assert_eq!(n.value, 23);
         let mut l = List::new();
         assert_eq!(l.length(), len);
 
-        let c = Node::new(35);
+        let c = Node::new_boxed(35);
         let child = thread::spawn(move || {
             assert_eq!(l.length(), len);
 
@@ -131,7 +131,7 @@ mod tests {
             len = len + 1;
             assert_eq!(l.length(), len);
 
-            let x = Node::new(45);
+            let x = Node::new_boxed(45);
             l.push_front(x);
             len = len + 1;
             assert_eq!(l.length(), len);
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn can_deref() {
-        let x = Node::new(634);
+        let x = Node::new_boxed(634);
         assert_eq!(x.value, 634);
         assert_eq!(&634, x.deref().deref());
         assert_eq!(&634, &**x);
@@ -157,7 +157,7 @@ mod tests {
         assert_eq!(l.length(), 0);
 
         for i in 1..11 {
-            let x = Node::new(i);
+            let x = Node::new_boxed(i);
             l.push_front(x);
             assert_eq!(l.length(), i);
         }
@@ -173,9 +173,9 @@ mod tests {
         let n = l.pop_front();
         assert!(n.is_none());
 
-        l.push_front(Node::new(42));
+        l.push_front(Node::new_boxed(42));
         assert_eq!(l.length(), 1);
-        l.push_front(Node::new(2084));
+        l.push_front(Node::new_boxed(2084));
         assert_eq!(l.length(), 2);
 
         let mut n = l.pop_front();
