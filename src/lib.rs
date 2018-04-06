@@ -339,6 +339,17 @@ mod tests {
         for (i, item) in (0..10).zip(l.into_iter()) {
             assert_eq!(i, item);
         }
+
+        let mut l = List::from_iter(vec![0,4,7]);
+        let mut m = l.pop_front();
+        assert!(m.is_some());
+        assert_eq!(m.unwrap().deref().deref(), &7);
+
+        m = l.pop_front();
+        assert_eq!(m.unwrap().deref().deref(), &4);
+
+        m = l.pop_front();
+        assert_eq!(m.unwrap().deref().deref(), &0);
     }
 
     // copied/edited from crossbeam's arc_cell test
