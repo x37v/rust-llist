@@ -2,6 +2,7 @@ use std::boxed::Box;
 use std::ops::Deref;
 use std::iter::IntoIterator;
 use std::iter::Iterator;
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 enum Link<T> {
@@ -68,6 +69,16 @@ impl<T> List<T> {
 
     pub fn iter(&self) -> ListIterator<T> {
         (&self).into_iter()
+    }
+}
+
+impl<T> FromIterator<T> for List<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+        let mut l = List::new();
+        for i in iter {
+            l.push_front(Node::new_boxed(i));
+        }
+        l
     }
 }
 
@@ -313,6 +324,21 @@ mod tests {
         assert_eq!(it.peek(), Some(&&10));
 
         assert_eq!((&l).into_iter().skip_while(|n| **n > 3).count(), 4);
+    }
+
+    #[test]
+    fn from_iter() {
+        let l = List::from_iter((0..10).rev());
+        assert_eq!(l.length(), 10);
+
+        for (i, item) in (0..10).zip(l.iter()) {
+            assert_eq!(&i, item);
+        }
+        assert_eq!(l.length(), 10);
+
+        for (i, item) in (0..10).zip(l.into_iter()) {
+            assert_eq!(i, item);
+        }
     }
 
     // copied/edited from crossbeam's arc_cell test
