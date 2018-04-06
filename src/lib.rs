@@ -65,6 +65,10 @@ impl<T> List<T> {
     pub fn length(&self) -> usize {
         self.length
     }
+
+    pub fn iter(&self) -> ListIterator<T> {
+        (&self).into_iter()
+    }
 }
 
 pub struct ListIterator<'a, T: 'a> 
@@ -268,7 +272,7 @@ mod tests {
         assert_eq!(l.length(), 11);
 
         i = 11;
-        for n in &l {
+        for n in l.iter() {
             i = i - 1;
             assert_eq!(n, &i);
         }
@@ -287,10 +291,10 @@ mod tests {
         }
         assert_eq!(l.length(), 11);
 
-        let it = IntoIterator::into_iter(&l);
+        let it = (&l).into_iter();
         assert_eq!(it.count(), 11);
 
-        let it = IntoIterator::into_iter(&l);
+        let it = (&l).into_iter();
         assert_eq!(it.last(), Some(&0));
     }
 
@@ -305,10 +309,10 @@ mod tests {
             l.push_front(x);
         }
 
-        let mut it = IntoIterator::into_iter(&l).peekable();
+        let mut it = (&l).into_iter().peekable();
         assert_eq!(it.peek(), Some(&&10));
 
-        assert_eq!(IntoIterator::into_iter(&l).skip_while(|n| **n > 3).count(), 4);
+        assert_eq!((&l).into_iter().skip_while(|n| **n > 3).count(), 4);
     }
 
     // copied/edited from crossbeam's arc_cell test
@@ -339,7 +343,7 @@ mod tests {
             assert!(n.is_some());
         }
         assert_eq!(DROPS.load(Ordering::SeqCst), 1);
-        assert_eq!(IntoIterator::into_iter(&l).count(), 9);
+        assert_eq!((&l).into_iter().count(), 9);
         assert_eq!(DROPS.load(Ordering::SeqCst), 1);
 
         drop(l);
