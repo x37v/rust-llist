@@ -75,19 +75,22 @@ pub struct ListIterator<'a, T: 'a>
     cur: &'a Link<T>
 }
 
-impl<T> Iterator for List<T> {
-    type Item = Box<Node<T>>;
-    fn next(&mut self) -> Option<Box<Node<T>>> {
-        self.pop_front()
+impl<T: Copy> Iterator for List<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        match self.pop_front() {
+            Some(node) => Some(*node.deref().deref()),
+            None => None
+        }
     }
 }
 
 impl <'a, T> Iterator for ListIterator<'a, T> {
-    type Item = &'a Box<Node<T>>;
-    fn next(&mut self) -> Option<&'a Box<Node<T>>> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
         if let &Link::Some(ref node) = self.cur {
             self.cur = &node.next;
-            Some(&node)
+            Some(&node.deref().deref())
         } else {
             None
         }
@@ -95,7 +98,7 @@ impl <'a, T> Iterator for ListIterator<'a, T> {
 }
 
 impl<'a, T> IntoIterator for &'a List<T> {
-    type Item = &'a Box<Node<T>>;
+    type Item = &'a T;
     type IntoIter = ListIterator<'a, T>;
 
     fn into_iter(self) -> ListIterator<'a, T> {
@@ -237,7 +240,7 @@ mod tests {
         }
 
         for (n, i) in l.zip((0..11).rev()) {
-            assert_eq!(n.deref().deref(), &i);
+            assert_eq!(n, i);
         }
     }
 
@@ -256,7 +259,7 @@ mod tests {
         let mut i = 11;
         for n in &l {
             i = i - 1;
-            assert_eq!(n.deref().deref(), &i);
+            assert_eq!(n, &i);
         }
         assert_eq!(l.length(), 11);
     }
