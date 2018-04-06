@@ -1,5 +1,7 @@
 use std::boxed::Box;
 use std::ops::Deref;
+use std::iter::IntoIterator;
+use std::iter::Iterator;
 
 #[derive(Debug)]
 enum Link<T> {
@@ -65,6 +67,39 @@ impl<T> List<T> {
             cnt += 1;
         }
         cnt
+    }
+}
+
+pub struct ListIterator<'a, T: 'a> 
+{
+    cur: &'a Link<T>
+}
+
+impl<T> Iterator for List<T> {
+    type Item = Box<Node<T>>;
+    fn next(&mut self) -> Option<Box<Node<T>>> {
+        self.pop_front()
+    }
+}
+
+impl <'a, T> Iterator for ListIterator<'a, T> {
+    type Item = &'a Box<Node<T>>;
+    fn next(&mut self) -> Option<&'a Box<Node<T>>> {
+        if let &Link::Some(ref node) = self.cur {
+            self.cur = &node.next;
+            Some(&node)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, T> IntoIterator for &'a List<T> {
+    type Item = &'a Box<Node<T>>;
+    type IntoIter = ListIterator<'a, T>;
+
+    fn into_iter(self) -> ListIterator<'a, T> {
+        ListIterator { cur: &self.head }
     }
 }
 
@@ -188,5 +223,41 @@ mod tests {
         assert_eq!(n.unwrap().value, 42);
         assert_eq!(l.length(), 0);
         assert!(l.pop_front().is_none());
+    }
+
+    #[test]
+    fn can_iterate_consuming() {
+        let mut l = List::new();
+        assert_eq!(l.length(), 0);
+
+        for i in 0..11 {
+            let x = Node::new_boxed(i);
+            assert_eq!(l.length(), i);
+            l.push_front(x);
+        }
+
+        for (n, i) in l.zip((0..11).rev()) {
+            assert_eq!(n.deref().deref(), &i);
+        }
+    }
+
+    #[test]
+    fn can_iterate_ref() {
+        let mut l = List::new();
+        assert_eq!(l.length(), 0);
+
+        for i in 0..11 {
+            let x = Node::new_boxed(i);
+            assert_eq!(l.length(), i);
+            l.push_front(x);
+        }
+        assert_eq!(l.length(), 11);
+
+        let mut i = 11;
+        for n in &l {
+            i = i - 1;
+            assert_eq!(n.deref().deref(), &i);
+        }
+        assert_eq!(l.length(), 11);
     }
 }
