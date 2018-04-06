@@ -116,6 +116,7 @@ unsafe impl <T> Send for Node<T> where T: Send {}
 mod tests {
     use std::thread;
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
     #[test]
     fn can_push() {
@@ -308,5 +309,45 @@ mod tests {
         assert_eq!(it.peek(), Some(&&10));
 
         assert_eq!(IntoIterator::into_iter(&l).skip_while(|n| **n > 3).count(), 4);
+    }
+
+    // copied/edited from crossbeam's arc_cell test
+    #[test]
+    fn drops() {
+        static DROPS: AtomicUsize = ATOMIC_USIZE_INIT;
+
+        struct Foo;
+
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                DROPS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        assert_eq!(DROPS.load(Ordering::SeqCst), 0);
+
+        let mut l = List::new();
+        for i in 1..11 {
+            let n = Node::new_boxed(Foo);
+            l.push_front(n);
+            assert_eq!(l.length(), i);
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 0);
+
+        {
+            let n = l.pop_front();
+            assert!(n.is_some());
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(IntoIterator::into_iter(&l).count(), 9);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+
+        drop(l);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 10);
+
+        {
+            let _ = Node::new_boxed(Foo);
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 11);
     }
 }
