@@ -20,7 +20,8 @@ pub struct Node<T> {
 }
 
 pub struct List<T> {
-    head: Link<T>
+    head: Link<T>,
+    length: usize
 }
 
 impl<T> Node<T> {
@@ -39,12 +40,13 @@ impl<T> Deref for Node<T> {
 
 impl<T> List<T> {
     pub fn new() -> Self {
-        List { head: Link::default() }
+        List { head: Link::default(), length: 0 }
     }
 
     pub fn push_front(&mut self, mut node: Box<Node<T>>) -> () {
         std::mem::swap(&mut node.next, &mut self.head);
         self.head = Link::Some(node);
+        self.length = self.length + 1;
     }
     
     pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
@@ -52,6 +54,7 @@ impl<T> List<T> {
         std::mem::swap(&mut ret, &mut self.head);
         match ret {
             Link::Some(mut node) => {
+                self.length = self.length - 1;
                 std::mem::swap(&mut node.next, &mut self.head);
                 Some(node)
             },
@@ -60,19 +63,14 @@ impl<T> List<T> {
     }
 
     pub fn length(&self) -> usize {
-        let mut cur = &self.head;
-        let mut cnt: usize = 0;
-        while let &Link::Some(ref node) = cur {
-            cur = &node.next;
-            cnt += 1;
-        }
-        cnt
+        self.length
     }
 }
 
 pub struct ListIterator<'a, T: 'a> 
 {
-    cur: &'a Link<T>
+    cur: &'a Link<T>,
+    length: usize
 }
 
 impl<T: Copy> Iterator for List<T> {
@@ -90,10 +88,15 @@ impl <'a, T> Iterator for ListIterator<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         if let &Link::Some(ref node) = self.cur {
             self.cur = &node.next;
+            self.length = self.length - 1;
             Some(&node.deref().deref())
         } else {
             None
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.length, Some(self.length))
     }
 }
 
@@ -102,7 +105,7 @@ impl<'a, T> IntoIterator for &'a List<T> {
     type IntoIter = ListIterator<'a, T>;
 
     fn into_iter(self) -> ListIterator<'a, T> {
-        ListIterator { cur: &self.head }
+        ListIterator { cur: &self.head, length: self.length }
     }
 }
 
@@ -269,5 +272,41 @@ mod tests {
             assert_eq!(n, &i);
         }
         assert_eq!(l.length(), 11);
+    }
+
+    #[test]
+    fn iter_has_size() {
+        let mut l = List::new();
+        assert_eq!(l.length(), 0);
+
+        for i in 0..11 {
+            let x = Node::new_boxed(i);
+            assert_eq!(l.length(), i);
+            l.push_front(x);
+        }
+        assert_eq!(l.length(), 11);
+
+        let it = IntoIterator::into_iter(&l);
+        assert_eq!(it.count(), 11);
+
+        let it = IntoIterator::into_iter(&l);
+        assert_eq!(it.last(), Some(&0));
+    }
+
+    #[test]
+    fn can_peek() {
+        let mut l = List::new();
+        assert_eq!(l.length(), 0);
+
+        for i in 0..11 {
+            let x = Node::new_boxed(i);
+            assert_eq!(l.length(), i);
+            l.push_front(x);
+        }
+
+        let mut it = IntoIterator::into_iter(&l).peekable();
+        assert_eq!(it.peek(), Some(&&10));
+
+        assert_eq!(IntoIterator::into_iter(&l).skip_while(|n| **n > 3).count(), 4);
     }
 }
