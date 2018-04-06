@@ -262,5 +262,12 @@ mod tests {
             assert_eq!(n, &i);
         }
         assert_eq!(l.length(), 11);
+
+        i = 11;
+        for n in &l {
+            i = i - 1;
+            assert_eq!(n, &i);
+        }
+        assert_eq!(l.length(), 11);
     }
 }
