@@ -26,6 +26,7 @@ pub struct List<T> {
 }
 
 impl<T> Node<T> {
+    /// Create a new boxed node.
     pub fn new_boxed(v: T) -> Box<Self> {
         Box::new(Node { next: Link::default(), value: v })
     }
@@ -39,17 +40,21 @@ impl<T> Deref for Node<T> {
     }
 }
 
+/// A Linked List implementation where the Nodes are pre-allocated and boxed.
 impl<T> List<T> {
+    /// Create a new list.
     pub fn new() -> Self {
         List { head: Link::default(), length: 0 }
     }
 
+    /// Push a Node onto the front of the list.
     pub fn push_front(&mut self, mut node: Box<Node<T>>) -> () {
         std::mem::swap(&mut node.next, &mut self.head);
         self.head = Link::Some(node);
         self.length = self.length + 1;
     }
     
+    /// Pop a Node off the front of the list.
     pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
         let mut ret = Link::None;
         std::mem::swap(&mut ret, &mut self.head);
@@ -63,15 +68,23 @@ impl<T> List<T> {
         }
     }
 
+    /// Get the length of the list.
     pub fn length(&self) -> usize {
         self.length
     }
 
+    /// Create an iterator over references to times in the nodes of the list.
     pub fn iter(&self) -> ListIterator<T> {
         (&self).into_iter()
     }
 }
 
+/// Create a List<T> from anything that implements IntoIterator<Item=T>
+/// 
+/// Note:
+/// This does allocate boxed nodes and the items will appear in the reverse order that they appear
+/// in the iterator.
+///
 impl<T> FromIterator<T> for List<T> {
     fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
         let mut l = List::new();
