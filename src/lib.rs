@@ -1,5 +1,6 @@
 use std::boxed::Box;
 use std::ops::Deref;
+use std::cell::UnsafeCell;
 use std::iter::IntoIterator;
 use std::iter::Iterator;
 use std::iter::FromIterator;
@@ -7,28 +8,33 @@ use std::iter::FromIterator;
 #[derive(Debug)]
 enum Link<T> {
     None,
-    Some(Box<Node<T>>)
+    Some(Box<Node<T>>),
 }
 
 impl<T> Default for Link<T> {
-    fn default() -> Self { Link::None }
+    fn default() -> Self {
+        Link::None
+    }
 }
 
 #[derive(Debug)]
 pub struct Node<T> {
-    next: Link<T>,
-    value: T
+    next: UnsafeCell<Link<T>>,
+    value: T,
 }
 
 pub struct List<T> {
-    head: Link<T>,
-    length: usize
+    head: UnsafeCell<Link<T>>,
+    length: usize,
 }
 
 impl<T> Node<T> {
     /// Create a new boxed node.
     pub fn new_boxed(v: T) -> Box<Self> {
-        Box::new(Node { next: Link::default(), value: v })
+        Box::new(Node {
+            next: UnsafeCell::new(Link::default()),
+            value: v,
+        })
     }
 }
 
@@ -44,27 +50,73 @@ impl<T> Deref for Node<T> {
 impl<T> List<T> {
     /// Create a new list.
     pub fn new() -> Self {
-        List { head: Link::default(), length: 0 }
+        List {
+            head: UnsafeCell::new(Link::default()),
+            length: 0,
+        }
     }
+
+    /*
+    pub fn insert<F>(&mut self, mut node: Box<Node<T>>, _func: F) -> ()
+    where
+        F: Fn(&T, &T) -> bool,
+    {
+        if let Link::None = self.head {
+            node.next = Link::None;
+            let mut link = Link::Some(node);
+            std::mem::swap(&mut link, &mut self.head);
+        } else {
+            let mut cur = &self.head;
+            while let &Link::Some(ref compnode) = cur {
+                cur = &compnode.next;
+            }
+            node.next = Link::None;
+            let mut link = Link::Some(node);
+            std::mem::swap(&mut link, &mut cur);
+            /*
+            loop {
+                match cur {
+                    Link::Some(ref mut compnode) => {
+                        /*
+                        if func(&node, compnode) {
+                            let mut link = Link::Some(node);
+                            std::mem::swap(&mut link, cur);
+                            break;
+                        }
+                        */
+                        cur = compnode.next;
+                    }
+                    Link::None => {
+                        node.next = Link::None;
+                        let mut link = Link::Some(node);
+                        std::mem::swap(&mut link, &mut cur);
+                        break;
+                    }
+                }
+            }
+        */
+        }
+    }
+*/
 
     /// Push a Node onto the front of the list.
     pub fn push_front(&mut self, mut node: Box<Node<T>>) -> () {
         std::mem::swap(&mut node.next, &mut self.head);
-        self.head = Link::Some(node);
+        *self.head.get() = Link::Some(node);
         self.length = self.length + 1;
     }
-    
+
     /// Pop a Node off the front of the list.
     pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
         let mut ret = Link::None;
-        std::mem::swap(&mut ret, &mut self.head);
+        std::mem::swap(&mut ret, &mut self.head.to_inner());
         match ret {
             Link::Some(mut node) => {
                 self.length = self.length - 1;
                 std::mem::swap(&mut node.next, &mut self.head);
                 Some(node)
-            },
-            Link::None => None
+            }
+            Link::None => None,
         }
     }
 
@@ -80,13 +132,13 @@ impl<T> List<T> {
 }
 
 /// Create a List<T> from anything that implements IntoIterator<Item=T>
-/// 
+///
 /// Note:
 /// This does allocate boxed nodes and the items will appear in the reverse order that they appear
 /// in the iterator.
 ///
 impl<T> FromIterator<T> for List<T> {
-    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         let mut l = List::new();
         for i in iter {
             l.push_front(Node::new_boxed(i));
@@ -95,10 +147,9 @@ impl<T> FromIterator<T> for List<T> {
     }
 }
 
-pub struct ListIterator<'a, T: 'a> 
-{
+pub struct ListIterator<'a, T: 'a> {
     cur: &'a Link<T>,
-    length: usize
+    length: usize,
 }
 
 impl<T: Copy> Iterator for List<T> {
@@ -106,12 +157,12 @@ impl<T: Copy> Iterator for List<T> {
     fn next(&mut self) -> Option<T> {
         match self.pop_front() {
             Some(node) => Some(*node.deref().deref()),
-            None => None
+            None => None,
         }
     }
 }
 
-impl <'a, T> Iterator for ListIterator<'a, T> {
+impl<'a, T> Iterator for ListIterator<'a, T> {
     type Item = &'a T;
     fn next(&mut self) -> Option<&'a T> {
         if let &Link::Some(ref node) = self.cur {
@@ -133,12 +184,18 @@ impl<'a, T> IntoIterator for &'a List<T> {
     type IntoIter = ListIterator<'a, T>;
 
     fn into_iter(self) -> ListIterator<'a, T> {
-        ListIterator { cur: &self.head, length: self.length }
+        ListIterator {
+            cur: &self.head,
+            length: self.length,
+        }
     }
 }
 
-unsafe impl <T> Send for Node<T> where T: Send {}
-
+unsafe impl<T> Send for Node<T>
+where
+    T: Send,
+{
+}
 
 #[cfg(test)]
 mod tests {
@@ -353,7 +410,7 @@ mod tests {
             assert_eq!(i, item);
         }
 
-        let mut l = List::from_iter(vec![0,4,7]);
+        let mut l = List::from_iter(vec![0, 4, 7]);
         let mut m = l.pop_front();
         assert!(m.is_some());
         assert_eq!(m.unwrap().deref().deref(), &7);
