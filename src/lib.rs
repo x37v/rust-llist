@@ -52,6 +52,35 @@ impl<T> List<T> {
         }
     }
 
+    pub fn insert<F>(&mut self, mut new_node: Box<Node<T>>, func: F)
+    where
+        F: Fn(&T, &T) -> bool,
+    {
+        if self.tail.is_null() {
+            self.push_back(new_node);
+        } else {
+            //let mut ins: *mut _ = &mut self.head;
+            let mut cur = &self.head;
+            while let &Some(ref node) = cur {
+                if let Some(ref next) = node.next {
+                    if func(&node.elem, &next.elem) {
+                        println!("INSERT HERE");
+                        //ins = cur as *mut Link<T>;
+                        break;
+                    }
+                } else {
+                    println!("NO NEXT");
+                    break;
+                }
+                cur = &node.next;
+            }
+        }
+    }
+
+    pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
+        self.insert(new_head, |_, _| true);
+    }
+
     pub fn push_back(&mut self, mut new_tail: Box<Node<T>>) {
         let raw_tail: *mut _ = &mut *new_tail;
 
@@ -184,6 +213,12 @@ mod test {
         assert_eq!(list.pop_front().unwrap().deref().deref(), &6);
         assert_eq!(list.pop_front().unwrap().deref().deref(), &7);
         assert!(list.pop_front().is_none());
+
+        // check push_front
+        list.push_front(Node::new_boxed(1));
+        assert_eq!(list.peek_front().unwrap().deref().deref(), &1);
+        list.push_front(Node::new_boxed(2));
+        assert_eq!(list.peek_front().unwrap().deref().deref(), &2);
     }
 
     #[test]
