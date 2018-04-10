@@ -57,28 +57,27 @@ impl<T> List<T> {
         F: Fn(&T, &T) -> bool,
     {
         if self.tail.is_null() {
+            println!("PUSH BACK");
             self.push_back(new_node);
+        } else if func(&new_node.elem, self.head.as_ref().unwrap()) {
+            println!("PUSH FRONT");
+            self.push_front(new_node);
         } else {
-            //let mut ins: *mut _ = &mut self.head;
             let mut cur = &self.head;
             while let &Some(ref node) = cur {
-                if let Some(ref next) = node.next {
-                    if func(&node.elem, &next.elem) {
-                        println!("INSERT HERE");
-                        //ins = cur as *mut Link<T>;
-                        break;
-                    }
-                } else {
-                    println!("NO NEXT");
-                    break;
-                }
+                println!("TRAVERSE");
                 cur = &node.next;
             }
         }
     }
 
     pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
-        self.insert(new_head, |_, _| true);
+        if self.tail.is_null() {
+            let raw_tail: *mut _ = &mut *new_head;
+            self.tail = raw_tail;
+        }
+        std::mem::swap(&mut new_head.next, &mut self.head);
+        self.head = Some(new_head);
     }
 
     pub fn push_back(&mut self, mut new_tail: Box<Node<T>>) {
@@ -219,6 +218,18 @@ mod test {
         assert_eq!(list.peek_front().unwrap().deref().deref(), &1);
         list.push_front(Node::new_boxed(2));
         assert_eq!(list.peek_front().unwrap().deref().deref(), &2);
+
+        //check insert
+        //add before 1
+        list.insert(Node::new_boxed(4), |_, x| x == &1);
+        list.insert(Node::new_boxed(5), |_, x| x == &1);
+        //should be 2, 4, 5, 1
+        //push front
+        list.insert(Node::new_boxed(6), |_, x| x == &2);
+        //should be 6, 2, 4, 5, 1
+        //push back
+        list.insert(Node::new_boxed(7), |_, _| false);
+        //should be 6, 2, 4, 5, 1, 7
     }
 
     #[test]
