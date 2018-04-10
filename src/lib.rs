@@ -2,6 +2,7 @@
 //Copyright (c) 2015 Alexis Beingessner
 
 use std::ptr;
+use std::ops::Deref;
 
 pub struct List<T> {
     head: Link<T>,
@@ -10,7 +11,8 @@ pub struct List<T> {
 
 type Link<T> = Option<Box<Node<T>>>;
 
-struct Node<T> {
+#[derive(Debug)]
+pub struct Node<T> {
     elem: T,
     next: Link<T>,
 }
@@ -25,6 +27,23 @@ pub struct IterMut<'a, T: 'a> {
     next: Option<&'a mut Node<T>>,
 }
 
+impl<T> Node<T> {
+    pub fn new_boxed(elem: T) -> Box<Self> {
+        Box::new(Node {
+            elem: elem,
+            next: None,
+        })
+    }
+}
+
+impl<T> Deref for Node<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.elem
+    }
+}
+
 impl<T> List<T> {
     pub fn new() -> Self {
         List {
@@ -33,12 +52,7 @@ impl<T> List<T> {
         }
     }
 
-    pub fn push(&mut self, elem: T) {
-        let mut new_tail = Box::new(Node {
-            elem: elem,
-            next: None,
-        });
-
+    pub fn push(&mut self, mut new_tail: Box<Node<T>>) {
         let raw_tail: *mut _ = &mut *new_tail;
 
         if !self.tail.is_null() {
@@ -52,16 +66,15 @@ impl<T> List<T> {
         self.tail = raw_tail;
     }
 
-    pub fn pop(&mut self) -> Option<T> {
-        self.head.take().map(|head| {
-            let head = *head;
-            self.head = head.next;
+    pub fn pop(&mut self) -> Option<Box<Node<T>>> {
+        self.head.take().map(|mut head| {
+            std::mem::swap(&mut self.head, &mut head.next);
 
             if self.head.is_none() {
                 self.tail = ptr::null_mut();
             }
 
-            head.elem
+            head
         })
     }
 
@@ -100,7 +113,7 @@ impl<T> Drop for List<T> {
 }
 
 impl<T> Iterator for IntoIter<T> {
-    type Item = T;
+    type Item = Box<Node<T>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.pop()
     }
@@ -131,64 +144,69 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 #[cfg(test)]
 mod test {
     use super::List;
+    use super::Node;
+    use std::ops::Deref;
+
     #[test]
     fn basics() {
         let mut list = List::new();
 
         // Check empty list behaves right
-        assert_eq!(list.pop(), None);
+        assert!(list.pop().is_none());
 
         // Populate list
-        list.push(1);
-        list.push(2);
-        list.push(3);
+        list.push(Node::new_boxed(1));
+        list.push(Node::new_boxed(2));
+        list.push(Node::new_boxed(3));
 
         // Check normal removal
-        assert_eq!(list.pop(), Some(1));
-        assert_eq!(list.pop(), Some(2));
+        assert_eq!(list.pop().unwrap().deref().deref(), &1);
+        assert_eq!(list.pop().unwrap().deref().deref(), &2);
 
         // Push some more just to make sure nothing's corrupted
-        list.push(4);
-        list.push(5);
+        list.push(Node::new_boxed(4));
+        list.push(Node::new_boxed(5));
 
         // Check normal removal
-        assert_eq!(list.pop(), Some(3));
-        assert_eq!(list.pop(), Some(4));
+        assert_eq!(list.pop().unwrap().deref().deref(), &3);
+        assert_eq!(list.pop().unwrap().deref().deref(), &4);
 
         // Check exhaustion
-        assert_eq!(list.pop(), Some(5));
-        assert_eq!(list.pop(), None);
+        assert_eq!(list.pop().unwrap().deref().deref(), &5);
+        assert!(list.pop().is_none());
+        assert!(list.pop().is_none());
 
         // Check the exhaustion case fixed the pointer right
-        list.push(6);
-        list.push(7);
+        list.push(Node::new_boxed(6));
+        list.push(Node::new_boxed(7));
 
         // Check normal removal
-        assert_eq!(list.pop(), Some(6));
-        assert_eq!(list.pop(), Some(7));
-        assert_eq!(list.pop(), None);
+        assert_eq!(list.pop().unwrap().deref().deref(), &6);
+        assert_eq!(list.pop().unwrap().deref().deref(), &7);
+        assert!(list.pop().is_none());
     }
 
     #[test]
     fn into_iter() {
         let mut list = List::new();
-        list.push(1);
-        list.push(2);
-        list.push(3);
+        list.push(Node::new_boxed(1));
+        list.push(Node::new_boxed(2));
+        list.push(Node::new_boxed(3));
 
         let mut iter = list.into_iter();
-        assert_eq!(iter.next(), Some(1));
-        assert_eq!(iter.next(), Some(2));
-        assert_eq!(iter.next(), Some(3));
-        assert_eq!(iter.next(), None);
+        assert_eq!(iter.next().unwrap().deref().deref(), &1);
+        assert_eq!(iter.next().unwrap().deref().deref(), &2);
+        assert_eq!(iter.next().unwrap().deref().deref(), &3);
+        assert!(iter.next().is_none());
+        assert!(iter.next().is_none());
     }
 
     #[test]
     fn iter() {
         let mut list = List::new();
-        list.push(1);
-        list.push(2);
-        list.push(3);
+        list.push(Node::new_boxed(1));
+        list.push(Node::new_boxed(2));
+        list.push(Node::new_boxed(3));
 
         let mut iter = list.iter();
         assert_eq!(iter.next(), Some(&1));
@@ -200,9 +218,9 @@ mod test {
     #[test]
     fn iter_mut() {
         let mut list = List::new();
-        list.push(1);
-        list.push(2);
-        list.push(3);
+        list.push(Node::new_boxed(1));
+        list.push(Node::new_boxed(2));
+        list.push(Node::new_boxed(3));
 
         let mut iter = list.iter_mut();
         assert_eq!(iter.next(), Some(&mut 1));
