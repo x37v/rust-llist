@@ -63,10 +63,23 @@ impl<T> List<T> {
             println!("PUSH FRONT");
             self.push_front(new_node);
         } else {
-            let mut cur = &self.head;
-            while let &Some(ref node) = cur {
-                println!("TRAVERSE");
-                cur = &node.next;
+            let mut inserted = false;
+            {
+                let mut cur = &self.head;
+                while let &Some(ref node) = cur {
+                    println!("TRAVERSE");
+                    if func(&new_node, node) {
+                        println!("INSERT HERE");
+                        //XXX IMPLEMENT INSERT!!
+                        inserted = true;
+                        break;
+                    }
+                    cur = &node.next;
+                }
+            }
+            if !inserted {
+                println!("PUSH BACK FROM INSERT");
+                self.push_back(new_node);
             }
         }
     }
