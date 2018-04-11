@@ -237,12 +237,39 @@ mod test {
         list.insert(Node::new_boxed(4), |_, x| x == &1);
         list.insert(Node::new_boxed(5), |_, x| x == &1);
         //should be 2, 4, 5, 1
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&1));
+        }
+
         //push front
         list.insert(Node::new_boxed(6), |_, x| x == &2);
+
         //should be 6, 2, 4, 5, 1
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&1));
+        }
+
         //push back
         list.insert(Node::new_boxed(7), |_, _| false);
         //should be 6, 2, 4, 5, 1, 7
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&1));
+            assert_eq!(iter.next(), Some(&7));
+        }
     }
 
     #[test]
