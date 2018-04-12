@@ -101,6 +101,23 @@ impl<T> List<T> {
         list
     }
 
+    pub fn append(&mut self, mut other: Self) {
+        //if self's tail is null then just replace self with other
+        if self.tail.is_null() {
+            std::mem::swap(&mut self.head, &mut other.head);
+            self.tail = other.tail;
+        } else if !other.tail.is_null() {
+            //if other's tail not null then append
+            let mut link = None;
+            std::mem::swap(&mut link, &mut other.head);
+            unsafe {
+                (*self.tail).next = link;
+            }
+            self.tail = other.tail;
+        }
+        other.tail = ptr::null_mut();
+    }
+
     pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
         if self.tail.is_null() {
             let raw_tail: *mut _ = &mut *new_head;
@@ -503,5 +520,86 @@ mod test {
         assert_eq!(iter.next(), Some(&mut 2));
         assert_eq!(iter.next(), Some(&mut 3));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn append_empty() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+
+        //append empty
+        let a = List::new();
+        list.append(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn append_to_empty() {
+        let mut list = List::new();
+
+        //append empty
+        let a = List::from_iter(vec![2, 3, 4]);
+        list.append(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn append() {
+        let mut list = List::from_iter(vec![2, 3]);
+        let a = List::from_iter(vec![5, 6]);
+        list.append(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
     }
 }
