@@ -118,6 +118,13 @@ impl<T> List<T> {
         other.tail = ptr::null_mut();
     }
 
+    pub fn prepend(&mut self, mut other: Self) {
+        //simply swap our head/tail with other and then append
+        std::mem::swap(&mut self.head, &mut other.head);
+        std::mem::swap(&mut self.tail, &mut other.tail);
+        self.append(other);
+    }
+
     pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
         if self.tail.is_null() {
             let raw_tail: *mut _ = &mut *new_head;
@@ -598,6 +605,79 @@ mod test {
             assert_eq!(iter.next(), Some(&3));
             assert_eq!(iter.next(), Some(&5));
             assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn prepend() {
+        let mut list = List::from_iter(vec![2, 3]);
+        let a = List::from_iter(vec![5, 6]);
+        list.prepend(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn prepend_empty() {
+        let mut list = List::from_iter(vec![2, 3]);
+        let a = List::new();
+        list.prepend(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn prepend_to_empty() {
+        let mut list = List::new();
+        let a = List::from_iter(vec![2, 3]);
+        list.prepend(a);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), None);
+        }
+
+        //assert push back
+        list.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
