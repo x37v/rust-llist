@@ -56,26 +56,20 @@ impl<T> List<T> {
     where
         F: Fn(&T, &T) -> bool,
     {
-        if self.tail.is_null() {
-            self.push_back(new_node);
-        } else if func(&new_node.elem, self.head.as_ref().unwrap()) {
-            self.push_front(new_node);
-        } else {
-            let mut cur = &mut self.head;
-            while let &mut Some(ref mut node) = cur {
-                if func(&new_node, node) {
-                    std::mem::swap(&mut new_node.elem, &mut node.elem);
-                    std::mem::swap(&mut new_node.next, &mut node.next);
-                    if self.tail == &mut **node as *mut _ {
-                        self.tail = &mut *new_node as *mut _;
-                    }
-                    node.next = Some(new_node);
-                    return;
+        let mut cur = &mut self.head;
+        while let &mut Some(ref mut node) = cur {
+            if func(&new_node, node) {
+                std::mem::swap(&mut new_node.elem, &mut node.elem);
+                std::mem::swap(&mut new_node.next, &mut node.next);
+                if self.tail == &mut **node as *mut _ {
+                    self.tail = &mut *new_node as *mut _;
                 }
-                cur = &mut node.next;
+                node.next = Some(new_node);
+                return;
             }
-            self.push_back(new_node);
+            cur = &mut node.next;
         }
+        self.push_back(new_node);
     }
 
     pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
