@@ -1,8 +1,8 @@
 //based on work
 //Copyright (c) 2015 Alexis Beingessner
-
-use std::ptr;
+#![feature(nll)]
 use std::ops::Deref;
+use std::ptr;
 
 pub struct List<T> {
     head: Link<T>,
@@ -57,30 +57,24 @@ impl<T> List<T> {
         F: Fn(&T, &T) -> bool,
     {
         if self.tail.is_null() {
-            println!("PUSH BACK");
             self.push_back(new_node);
         } else if func(&new_node.elem, self.head.as_ref().unwrap()) {
-            println!("PUSH FRONT");
             self.push_front(new_node);
         } else {
-            let mut inserted = false;
-            {
-                let mut cur = &self.head;
-                while let &Some(ref node) = cur {
-                    println!("TRAVERSE");
-                    if func(&new_node, node) {
-                        println!("INSERT HERE");
-                        //XXX IMPLEMENT INSERT!!
-                        inserted = true;
-                        break;
+            let mut cur = &mut self.head;
+            while let &mut Some(ref mut node) = cur {
+                if func(&new_node, node) {
+                    std::mem::swap(&mut new_node.elem, &mut node.elem);
+                    std::mem::swap(&mut new_node.next, &mut node.next);
+                    if self.tail == &mut **node as *mut _ {
+                        self.tail = &mut *new_node as *mut _;
                     }
-                    cur = &node.next;
+                    node.next = Some(new_node);
+                    return;
                 }
+                cur = &mut node.next;
             }
-            if !inserted {
-                println!("PUSH BACK FROM INSERT");
-                self.push_back(new_node);
-            }
+            self.push_back(new_node);
         }
     }
 
