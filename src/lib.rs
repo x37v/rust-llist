@@ -306,7 +306,17 @@ mod test {
     }
 
     #[test]
-    fn split() {
+    fn from_iter() {
+        let list = List::from_iter(vec![2, 3, 4]);
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&4));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn split_at_front() {
         let mut list = List::from_iter(vec![2, 3, 4]);
 
         let mut iter = list.iter();
@@ -321,6 +331,8 @@ mod test {
             let mut iter = list.iter();
             assert_eq!(iter.next(), None);
         }
+
+        //make sure that the back pointer is correct
         {
             list.push_back(Node::new_boxed(7));
             let mut iter = list.iter();
@@ -343,6 +355,109 @@ mod test {
             assert_eq!(iter.next(), Some(&3));
             assert_eq!(iter.next(), Some(&4));
             assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn split() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+
+        let mut s = list.split(|v| v == &3);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+
+        //make sure that the back pointer is correct
+        list.push_back(Node::new_boxed(8));
+        s.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn split_last() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+        let mut s = list.split(|v| v == &4);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+
+        //make sure that the back pointer is correct
+        list.push_back(Node::new_boxed(8));
+        s.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&2084));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn split_end() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+        let mut s = list.split(|_| false);
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), None);
+        }
+
+        //make sure that the back pointer is correct
+        list.push_back(Node::new_boxed(8));
+        s.push_back(Node::new_boxed(2084));
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
     }
