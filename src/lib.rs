@@ -3,6 +3,7 @@
 #![feature(nll)]
 use std::ops::Deref;
 use std::ptr;
+use std::iter::FromIterator;
 
 pub struct List<T> {
     head: Link<T>,
@@ -70,6 +71,34 @@ impl<T> List<T> {
             cur = &mut node.next;
         }
         self.push_back(new_node);
+    }
+
+    pub fn split<F>(&mut self, func: F) -> Self
+    where
+        F: Fn(&T) -> bool,
+    {
+        let mut list = List::new();
+        if let &mut Some(ref mut node) = &mut self.head {
+            if func(node.deref().deref()) {
+                std::mem::swap(&mut self.head, &mut list.head);
+                list.tail = self.tail;
+                self.tail = ptr::null_mut();
+                return list;
+            }
+        }
+        let mut cur = &mut self.head;
+        while let &mut Some(ref mut node) = cur {
+            if let &mut Some(ref mut next) = &mut node.next {
+                if func(next.deref().deref()) {
+                    std::mem::swap(&mut list.head, &mut node.next);
+                    list.tail = self.tail;
+                    self.tail = &mut **node as *mut _;
+                    return list;
+                }
+            }
+            cur = &mut node.next;
+        }
+        list
     }
 
     pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
@@ -141,6 +170,21 @@ impl<T> Drop for List<T> {
     }
 }
 
+/// Create a List<T> from anything that implements IntoIterator<Item=T>
+///
+/// Note:
+/// This does allocate boxed nodes.
+///
+impl<T> FromIterator<T> for List<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let mut l = List::new();
+        for i in iter {
+            l.push_back(Node::new_boxed(i));
+        }
+        l
+    }
+}
+
 impl<T> Iterator for IntoIter<T> {
     type Item = Box<Node<T>>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -175,6 +219,7 @@ mod test {
     use super::List;
     use super::Node;
     use std::ops::Deref;
+    use std::iter::FromIterator;
 
     #[test]
     fn basics() {
@@ -257,6 +302,48 @@ mod test {
             assert_eq!(iter.next(), Some(&5));
             assert_eq!(iter.next(), Some(&1));
             assert_eq!(iter.next(), Some(&7));
+        }
+    }
+
+    #[test]
+    fn split() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&4));
+        assert_eq!(iter.next(), None);
+
+        let mut s = list.split(|v| v == &2);
+
+        {
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), None);
+        }
+        {
+            list.push_back(Node::new_boxed(7));
+            let mut iter = list.iter();
+            assert_eq!(iter.next(), Some(&7));
+            assert_eq!(iter.next(), None);
+        }
+
+        {
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), None);
+        }
+
+        {
+            s.push_back(Node::new_boxed(8));
+            let mut iter = s.iter();
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&3));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
         }
     }
 
