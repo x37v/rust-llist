@@ -198,6 +198,16 @@ impl<T: PartialOrd> List<T> {
     pub fn insert_sorted(&mut self, new_node: Box<Node<T>>) {
         self.insert(new_node, |a, b| a < b);
     }
+
+    pub fn sort(&mut self) {
+        let mut other = List::new();
+        //simply swap our head/tail with other and then append
+        std::mem::swap(&mut self.head, &mut other.head);
+        std::mem::swap(&mut self.tail, &mut other.tail);
+        for n in other.into_iter() {
+            self.insert_sorted(n);
+        }
+    }
 }
 
 /// Create a List<T> from anything that implements IntoIterator<Item=T>
@@ -755,6 +765,70 @@ mod test {
             assert_eq!(iter.next(), Some(&4));
             assert_eq!(iter.next(), Some(&8));
             assert_eq!(iter.next(), Some(&-20));
+            assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn sort() {
+        let mut l = List::new();
+        assert_eq!(l.iter().next(), None);
+        l.sort();
+        assert_eq!(l.iter().next(), None);
+
+        l.push_back(Node::new_boxed(2));
+        l.push_back(Node::new_boxed(0));
+        l.push_back(Node::new_boxed(8));
+        l.push_back(Node::new_boxed(4));
+        l.push_back(Node::new_boxed(4));
+        l.push_back(Node::new_boxed(-20));
+        l.push_back(Node::new_boxed(-2));
+
+        l.sort();
+        {
+            let mut iter = l.iter();
+            assert_eq!(iter.next(), Some(&-20));
+            assert_eq!(iter.next(), Some(&-2));
+            assert_eq!(iter.next(), Some(&0));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+
+        //insert before 0
+        l.insert(Node::new_boxed(5), |_, y| y == &0);
+        l.push_back(Node::new_boxed(-31));
+        l.push_front(Node::new_boxed(6));
+        {
+            let mut iter = l.iter();
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&-20));
+            assert_eq!(iter.next(), Some(&-2));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&0));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), Some(&-31));
+            assert_eq!(iter.next(), None);
+        }
+
+        l.sort();
+        {
+            let mut iter = l.iter();
+            assert_eq!(iter.next(), Some(&-31));
+            assert_eq!(iter.next(), Some(&-20));
+            assert_eq!(iter.next(), Some(&-2));
+            assert_eq!(iter.next(), Some(&0));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&5));
+            assert_eq!(iter.next(), Some(&6));
+            assert_eq!(iter.next(), Some(&8));
             assert_eq!(iter.next(), None);
         }
     }
