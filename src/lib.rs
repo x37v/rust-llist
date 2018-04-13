@@ -194,6 +194,12 @@ impl<T> Drop for List<T> {
     }
 }
 
+impl<T: PartialOrd> List<T> {
+    pub fn insert_sorted(&mut self, new_node: Box<Node<T>>) {
+        self.insert(new_node, |a, b| a < b);
+    }
+}
+
 /// Create a List<T> from anything that implements IntoIterator<Item=T>
 ///
 /// Note:
@@ -720,5 +726,36 @@ mod test {
             let _ = Node::new_boxed(Foo);
         }
         assert_eq!(DROPS.load(Ordering::SeqCst), 11);
+    }
+
+    #[test]
+    fn insert_sorted() {
+        let mut l = List::new();
+        l.insert_sorted(Node::new_boxed(2));
+        l.insert_sorted(Node::new_boxed(0));
+        l.insert_sorted(Node::new_boxed(8));
+        l.insert_sorted(Node::new_boxed(4));
+
+        {
+            let mut iter = l.iter();
+            assert_eq!(iter.next(), Some(&0));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), None);
+        }
+
+        //make sure back still works though
+        l.push_back(Node::new_boxed(-20));
+
+        {
+            let mut iter = l.iter();
+            assert_eq!(iter.next(), Some(&0));
+            assert_eq!(iter.next(), Some(&2));
+            assert_eq!(iter.next(), Some(&4));
+            assert_eq!(iter.next(), Some(&8));
+            assert_eq!(iter.next(), Some(&-20));
+            assert_eq!(iter.next(), None);
+        }
     }
 }
