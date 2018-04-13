@@ -1,5 +1,6 @@
 //based on work
 //Copyright (c) 2015 Alexis Beingessner
+
 #![feature(nll)]
 use std::ops::Deref;
 use std::ptr;
