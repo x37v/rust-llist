@@ -422,12 +422,6 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
-unsafe impl<T> Send for Node<T>
-where
-    T: Send,
-{
-}
-
 unsafe impl<T> Send for List<T>
 where
     T: Send,
