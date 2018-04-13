@@ -422,8 +422,21 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
+unsafe impl<T> Send for Node<T>
+where
+    T: Send,
+{
+}
+
+unsafe impl<T> Send for List<T>
+where
+    T: Send,
+{
+}
+
 #[cfg(test)]
 mod test {
+    use std::thread;
     use super::List;
     use super::Node;
     use std::ops::Deref;
@@ -998,6 +1011,30 @@ mod test {
             assert_eq!(iter.next(), Some(&6));
             assert_eq!(iter.next(), Some(&8));
             assert_eq!(iter.next(), None);
+        }
+    }
+
+    #[test]
+    fn can_thread() {
+        let n = Node::new_boxed(23);
+        let mut l = List::new();
+        l.push_back(n);
+
+        let c = Node::new_boxed(35);
+        let child = thread::spawn(move || {
+            l.push_back(c);
+            let x = Node::new_boxed(45);
+            l.push_front(x);
+
+            let mut it = l.iter();
+            assert_eq!(it.next(), Some(&45));
+            assert_eq!(it.next(), Some(&23));
+            assert_eq!(it.next(), Some(&35));
+            assert_eq!(it.next(), None);
+        });
+
+        if let Err(e) = child.join() {
+            panic!(e);
         }
     }
 }
