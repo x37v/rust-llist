@@ -8,6 +8,7 @@ use std::iter::FromIterator;
 
 pub struct List<T> {
     head: Link<T>,
+    count: usize,
     tail: *mut Node<T>,
 }
 
@@ -56,12 +57,18 @@ impl<T> DerefMut for Node<T> {
 }
 
 impl<T> List<T> {
-    /// create a new empty list
+    /// Create a new empty list.
     pub fn new() -> Self {
         List {
             head: None,
+            count: 0,
             tail: ptr::null_mut(),
         }
+    }
+
+    /// Get the current count of nodes in the list.
+    pub fn count(&self) -> usize {
+        self.count
     }
 
     /// Push a node to the front of the list
@@ -72,6 +79,7 @@ impl<T> List<T> {
         }
         std::mem::swap(&mut new_head.next, &mut self.head);
         self.head = Some(new_head);
+        self.count = self.count + 1;
     }
 
     /// Push a node to the back of the list
@@ -87,6 +95,7 @@ impl<T> List<T> {
         }
 
         self.tail = raw_tail;
+        self.count = self.count + 1;
     }
 
     /// Pop a node from the front of the list, if there is one.
@@ -96,6 +105,9 @@ impl<T> List<T> {
 
             if self.head.is_none() {
                 self.tail = ptr::null_mut();
+                self.count = 0;
+            } else if self.count > 0 {
+                self.count = self.count - 1;
             }
 
             head
@@ -157,6 +169,7 @@ impl<T> List<T> {
                     self.tail = &mut *new_node as *mut _;
                 }
                 node.next = Some(new_node);
+                self.count = self.count + 1;
                 return;
             }
             cur = &mut node.next;
@@ -205,21 +218,28 @@ impl<T> List<T> {
         F: Fn(&T) -> bool,
     {
         let mut list = List::new();
+        //the case where we split before the first node
         if let &mut Some(ref mut node) = &mut self.head {
             if func(node.deref().deref()) {
                 std::mem::swap(&mut self.head, &mut list.head);
                 list.tail = self.tail;
                 self.tail = ptr::null_mut();
+                list.count = self.count;
+                self.count = 0;
                 return list;
             }
         }
         let mut cur = &mut self.head;
+        let mut count = 0;
         while let &mut Some(ref mut node) = cur {
+            count = count + 1;
             if let &mut Some(ref mut next) = &mut node.next {
                 if func(next.deref().deref()) {
                     std::mem::swap(&mut list.head, &mut node.next);
                     list.tail = self.tail;
                     self.tail = &mut **node as *mut _;
+                    list.count = self.count - count;
+                    self.count = count;
                     return list;
                 }
             }
@@ -262,6 +282,7 @@ impl<T> List<T> {
             self.tail = other.tail;
         }
         other.tail = ptr::null_mut();
+        self.count = self.count + other.count;
     }
 
     /// Add the contents of another list to the front of this list.
@@ -378,6 +399,7 @@ impl<T: PartialOrd> List<T> {
         //simply swap our head/tail with other and then append
         std::mem::swap(&mut self.head, &mut other.head);
         std::mem::swap(&mut self.tail, &mut other.tail);
+        std::mem::swap(&mut self.count, &mut other.count);
         for n in other.into_iter() {
             self.insert_sorted(n);
         }
@@ -447,14 +469,17 @@ mod test {
     #[test]
     fn basics() {
         let mut list = List::new();
+        assert_eq!(list.count(), 0);
 
         // Check empty list behaves right
         assert!(list.pop_front().is_none());
+        assert_eq!(list.count(), 0);
 
         // Populate list
         list.push_back(Node::new_boxed(1));
         list.push_back(Node::new_boxed(2));
         list.push_back(Node::new_boxed(3));
+        assert_eq!(list.count(), 3);
 
         // Check normal removal
         assert_eq!(list.pop_front().unwrap().deref().deref(), &1);
@@ -463,35 +488,43 @@ mod test {
         // Push some more just to make sure nothing's corrupted
         list.push_back(Node::new_boxed(4));
         list.push_back(Node::new_boxed(5));
+        assert_eq!(list.count(), 3);
 
         // Check normal removal
         assert_eq!(list.pop_front().unwrap().deref().deref(), &3);
         assert_eq!(list.pop_front().unwrap().deref().deref(), &4);
+        assert_eq!(list.count(), 1);
 
         // Check exhaustion
         assert_eq!(list.pop_front().unwrap().deref().deref(), &5);
         assert!(list.pop_front().is_none());
+        assert_eq!(list.count(), 0);
         assert!(list.pop_front().is_none());
+        assert_eq!(list.count(), 0);
 
         // Check the exhaustion case fixed the pointer right
         list.push_back(Node::new_boxed(6));
         list.push_back(Node::new_boxed(7));
+        assert_eq!(list.count(), 2);
 
         // Check normal removal
         assert_eq!(list.pop_front().unwrap().deref().deref(), &6);
         assert_eq!(list.pop_front().unwrap().deref().deref(), &7);
         assert!(list.pop_front().is_none());
+        assert_eq!(list.count(), 0);
 
         // check push_front
         list.push_front(Node::new_boxed(1));
         assert_eq!(list.peek_front().unwrap().deref().deref(), &1);
         list.push_front(Node::new_boxed(2));
         assert_eq!(list.peek_front().unwrap().deref().deref(), &2);
+        assert_eq!(list.count(), 2);
 
         //check insert
         //add before 1
         list.insert(Node::new_boxed(4), |_, x| x == &1);
         list.insert(Node::new_boxed(5), |_, x| x == &1);
+        assert_eq!(list.count(), 4);
         //should be 2, 4, 5, 1
         {
             let mut iter = list.iter();
@@ -500,9 +533,11 @@ mod test {
             assert_eq!(iter.next(), Some(&5));
             assert_eq!(iter.next(), Some(&1));
         }
+        assert_eq!(list.count(), 4);
 
         //push front
         list.insert(Node::new_boxed(6), |_, x| x == &2);
+        assert_eq!(list.count(), 5);
 
         //should be 6, 2, 4, 5, 1
         {
@@ -526,22 +561,27 @@ mod test {
             assert_eq!(iter.next(), Some(&1));
             assert_eq!(iter.next(), Some(&7));
         }
+        assert_eq!(list.count(), 6);
     }
 
     #[test]
     fn pop_then_push() {
         let mut list = List::from_iter(vec![2, 3, 4]);
         assert_eq!(list.iter().count(), 3);
+        assert_eq!(list.count(), 3);
 
         let mut node = list.pop_front().unwrap();
+        assert_eq!(list.count(), 2);
         **node = 23;
         list.push_back(node);
         assert_eq!(list.iter().count(), 3);
+        assert_eq!(list.count(), 3);
 
         let mut iter = list.iter();
         assert_eq!(iter.next(), Some(&3));
         assert_eq!(iter.next(), Some(&4));
         assert_eq!(iter.next(), Some(&23));
+        assert_eq!(list.count(), 3);
     }
 
     #[test]
@@ -557,6 +597,7 @@ mod test {
             *r = 23;
         }
         assert_eq!(list.iter().count(), 3);
+        assert_eq!(list.count(), 3);
 
         let mut iter = list.iter();
         assert_eq!(iter.next(), Some(&23));
@@ -583,8 +624,11 @@ mod test {
         assert_eq!(iter.next(), Some(&3));
         assert_eq!(iter.next(), Some(&4));
         assert_eq!(iter.next(), None);
+        assert_eq!(list.count(), 3);
 
         let mut s = list.split(|v| v == &2);
+        assert_eq!(list.count(), 0);
+        assert_eq!(s.count(), 3);
 
         {
             let mut iter = list.iter();
@@ -598,6 +642,7 @@ mod test {
             assert_eq!(iter.next(), Some(&7));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 1);
 
         {
             let mut iter = s.iter();
@@ -606,6 +651,7 @@ mod test {
             assert_eq!(iter.next(), Some(&4));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(s.count(), 3);
 
         {
             s.push_back(Node::new_boxed(8));
@@ -616,11 +662,13 @@ mod test {
             assert_eq!(iter.next(), Some(&8));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(s.count(), 4);
     }
 
     #[test]
     fn split() {
         let mut list = List::from_iter(vec![2, 3, 4]);
+        assert_eq!(list.count(), 3);
 
         let mut s = list.split(|v| v == &3);
         {
@@ -628,16 +676,20 @@ mod test {
             assert_eq!(iter.next(), Some(&2));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 1);
         {
             let mut iter = s.iter();
             assert_eq!(iter.next(), Some(&3));
             assert_eq!(iter.next(), Some(&4));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(s.count(), 2);
 
         //make sure that the back pointer is correct
         list.push_back(Node::new_boxed(8));
         s.push_back(Node::new_boxed(2084));
+        assert_eq!(list.count(), 2);
+        assert_eq!(s.count(), 3);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -663,11 +715,13 @@ mod test {
             assert_eq!(iter.next(), Some(&3));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 2);
         {
             let mut iter = s.iter();
             assert_eq!(iter.next(), Some(&4));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(s.count(), 1);
 
         //make sure that the back pointer is correct
         list.push_back(Node::new_boxed(8));
@@ -685,12 +739,16 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 3);
+        assert_eq!(s.count(), 2);
     }
 
     #[test]
     fn split_end() {
         let mut list = List::from_iter(vec![2, 3, 4]);
         let mut s = list.split(|_| false);
+        assert_eq!(list.count(), 3);
+        assert_eq!(s.count(), 0);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -719,6 +777,8 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 4);
+        assert_eq!(s.count(), 1);
     }
 
     #[test]
@@ -770,7 +830,10 @@ mod test {
 
         //append empty
         let a = List::new();
+        assert_eq!(a.count(), 0);
+        assert_eq!(list.count(), 3);
         list.append(a);
+        assert_eq!(list.count(), 3);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -789,6 +852,7 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 4);
     }
 
     #[test]
@@ -797,7 +861,10 @@ mod test {
 
         //append empty
         let a = List::from_iter(vec![2, 3, 4]);
+        assert_eq!(list.count(), 0);
+        assert_eq!(a.count(), 3);
         list.append(a);
+        assert_eq!(list.count(), 3);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -816,13 +883,17 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 4);
     }
 
     #[test]
     fn append() {
         let mut list = List::from_iter(vec![2, 3]);
         let a = List::from_iter(vec![5, 6]);
+        assert_eq!(list.count(), 2);
+        assert_eq!(a.count(), 2);
         list.append(a);
+        assert_eq!(list.count(), 4);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -843,13 +914,17 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 5);
     }
 
     #[test]
     fn prepend() {
         let mut list = List::from_iter(vec![2, 3]);
         let a = List::from_iter(vec![5, 6]);
+        assert_eq!(list.count(), 2);
+        assert_eq!(a.count(), 2);
         list.prepend(a);
+        assert_eq!(list.count(), 4);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&5));
@@ -870,13 +945,17 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 5);
     }
 
     #[test]
     fn prepend_empty() {
         let mut list = List::from_iter(vec![2, 3]);
         let a = List::new();
+        assert_eq!(list.count(), 2);
+        assert_eq!(a.count(), 0);
         list.prepend(a);
+        assert_eq!(list.count(), 2);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -893,13 +972,17 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 3);
     }
 
     #[test]
     fn prepend_to_empty() {
         let mut list = List::new();
         let a = List::from_iter(vec![2, 3]);
+        assert_eq!(list.count(), 0);
+        assert_eq!(a.count(), 2);
         list.prepend(a);
+        assert_eq!(list.count(), 2);
         {
             let mut iter = list.iter();
             assert_eq!(iter.next(), Some(&2));
@@ -916,6 +999,7 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+        assert_eq!(list.count(), 3);
     }
     // copied/edited from crossbeam's arc_cell test
     #[test]
@@ -963,6 +1047,7 @@ mod test {
         l.insert_sorted(Node::new_boxed(0));
         l.insert_sorted(Node::new_boxed(8));
         l.insert_sorted(Node::new_boxed(4));
+        assert_eq!(l.count(), 4);
 
         {
             let mut iter = l.iter();
@@ -975,6 +1060,7 @@ mod test {
 
         //make sure back still works though
         l.push_back(Node::new_boxed(-20));
+        assert_eq!(l.count(), 5);
 
         {
             let mut iter = l.iter();
@@ -991,8 +1077,10 @@ mod test {
     fn sort() {
         let mut l = List::new();
         assert_eq!(l.iter().next(), None);
+        assert_eq!(l.count(), 0);
         l.sort();
         assert_eq!(l.iter().next(), None);
+        assert_eq!(l.count(), 0);
 
         l.push_back(Node::new_boxed(2));
         l.push_back(Node::new_boxed(0));
@@ -1001,8 +1089,10 @@ mod test {
         l.push_back(Node::new_boxed(4));
         l.push_back(Node::new_boxed(-20));
         l.push_back(Node::new_boxed(-2));
+        assert_eq!(l.count(), 7);
 
         l.sort();
+        assert_eq!(l.count(), 7);
         {
             let mut iter = l.iter();
             assert_eq!(iter.next(), Some(&-20));
@@ -1019,6 +1109,7 @@ mod test {
         l.insert(Node::new_boxed(5), |_, y| y == &0);
         l.push_back(Node::new_boxed(-31));
         l.push_front(Node::new_boxed(6));
+        assert_eq!(l.count(), 10);
         {
             let mut iter = l.iter();
             assert_eq!(iter.next(), Some(&6));
@@ -1035,6 +1126,7 @@ mod test {
         }
 
         l.sort();
+        assert_eq!(l.count(), 10);
         {
             let mut iter = l.iter();
             assert_eq!(iter.next(), Some(&-31));
