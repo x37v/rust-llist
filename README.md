@@ -5,7 +5,7 @@ The eventual use of this will be to allocate nodes in one thread, send them to a
 
 ## Acknowledgments
 
-Based on examples Copyright (c) 2015 Alexis Beingessner, [Learning Rust With Entirely Too Many Linked Lists](http://cglab.ca/~abeinges/blah/too-many-lists/book/) [github](https://github.com/rust-unofficial/too-many-lists)
+Based on examples Copyright (c) 2015 [Alexis Beingessner](http://cglab.ca/~abeinges/), [Learning Rust With Entirely Too Many Linked Lists](http://cglab.ca/~abeinges/blah/too-many-lists/book/) [github](https://github.com/rust-unofficial/too-many-lists)
 
 ## [Thanks for the help:](https://users.rust-lang.org/t/yet-another-linked-list-insert/16783)
 
