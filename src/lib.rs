@@ -29,6 +29,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 impl<T> Node<T> {
+    /// Create a new node on the heap.
     pub fn new_boxed(elem: T) -> Box<Self> {
         Box::new(Node {
             elem: elem,
@@ -40,12 +41,14 @@ impl<T> Node<T> {
 impl<T> Deref for Node<T> {
     type Target = T;
 
+    /// Get a reference to the item held by this node.
     fn deref(&self) -> &T {
         &self.elem
     }
 }
 
 impl<T> List<T> {
+    /// create a new empty list
     pub fn new() -> Self {
         List {
             head: None,
@@ -53,6 +56,86 @@ impl<T> List<T> {
         }
     }
 
+    /// Push a node to the front of the list
+    pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
+        if self.tail.is_null() {
+            let raw_tail: *mut _ = &mut *new_head;
+            self.tail = raw_tail;
+        }
+        std::mem::swap(&mut new_head.next, &mut self.head);
+        self.head = Some(new_head);
+    }
+
+    /// Push a node to the back of the list
+    pub fn push_back(&mut self, mut new_tail: Box<Node<T>>) {
+        let raw_tail: *mut _ = &mut *new_tail;
+
+        if !self.tail.is_null() {
+            unsafe {
+                (*self.tail).next = Some(new_tail);
+            }
+        } else {
+            self.head = Some(new_tail);
+        }
+
+        self.tail = raw_tail;
+    }
+
+    /// Pop a node from the front of the list, if there is one.
+    pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
+        self.head.take().map(|mut head| {
+            std::mem::swap(&mut self.head, &mut head.next);
+
+            if self.head.is_none() {
+                self.tail = ptr::null_mut();
+            }
+
+            head
+        })
+    }
+
+    /// Get a reference to the item held by the node at the front of the list, if there is one.
+    pub fn peek_front(&self) -> Option<&T> {
+        self.head.as_ref().map(|node| &node.elem)
+    }
+
+    /// Get a mutable reference to the item held by the node at the front of the list, if there is one.
+    pub fn peek_front_mut(&mut self) -> Option<&mut T> {
+        self.head.as_mut().map(|node| &mut node.elem)
+    }
+
+    /// Insert new node
+    ///
+    /// # Arguments
+    /// * `new_node` - The node to insert.
+    /// * `func` - a function indicating where to insert.
+    ///
+    /// # Remarks
+    ///
+    /// The function takes 2 references, your new_node's value is always the first and a node in
+    /// the list is the second. When the function evaluates to true the new_node is placed before
+    /// the second node in the function.
+    ///
+    /// # Examples
+    ///
+    /// insert reverse sorted
+    ///
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    ///
+    /// let mut l = List::new();
+    /// l.push_front(Node::new_boxed(2));
+    /// l.push_front(Node::new_boxed(4));
+    /// l.insert(Node::new_boxed(3), |new_value, node_value| new_value > node_value);
+    ///
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    ///
     pub fn insert<F>(&mut self, mut new_node: Box<Node<T>>, func: F)
     where
         F: Fn(&T, &T) -> bool,
@@ -73,6 +156,42 @@ impl<T> List<T> {
         self.push_back(new_node);
     }
 
+    /// Split the list into 2 lists.
+    ///
+    /// # Arguments
+    /// * `func` - a function indicating where to split.
+    ///
+    /// # Remarks
+    ///
+    /// The function gets a reference to a node's value and the first time the function returns
+    /// true the list is split before that node.
+    ///
+    /// If the function always returns false then the return is an empty list.
+    /// If the function always returns true then the new list contains all of the old list and the
+    /// old list is empty.
+    ///
+    /// # Example
+    ///
+    /// split at the 8
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![2,0,8,4]);
+    /// let s = l.split(|v| v == &8);
+    ///
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), None);
+    ///
+    /// let mut it = s.iter();
+    /// assert_eq!(it.next(), Some(&8));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), None);
+    ///
+    /// ```
     pub fn split<F>(&mut self, func: F) -> Self
     where
         F: Fn(&T) -> bool,
@@ -101,6 +220,25 @@ impl<T> List<T> {
         list
     }
 
+    /// Append a list to another list.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![2,0]);
+    /// let mut o = List::from_iter(vec![8,4]);
+    ///
+    /// l.append(o);
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), Some(&8));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), None);
     pub fn append(&mut self, mut other: Self) {
         //if self's tail is null then just replace self with other
         if self.tail.is_null() {
@@ -118,6 +256,25 @@ impl<T> List<T> {
         other.tail = ptr::null_mut();
     }
 
+    /// Add the contents of another list to the front of this list.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![2,0]);
+    /// let mut o = List::from_iter(vec![8,4]);
+    ///
+    /// l.prepend(o);
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&8));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), None);
     pub fn prepend(&mut self, mut other: Self) {
         //simply swap our head/tail with other and then append
         std::mem::swap(&mut self.head, &mut other.head);
@@ -125,59 +282,19 @@ impl<T> List<T> {
         self.append(other);
     }
 
-    pub fn push_front(&mut self, mut new_head: Box<Node<T>>) {
-        if self.tail.is_null() {
-            let raw_tail: *mut _ = &mut *new_head;
-            self.tail = raw_tail;
-        }
-        std::mem::swap(&mut new_head.next, &mut self.head);
-        self.head = Some(new_head);
-    }
-
-    pub fn push_back(&mut self, mut new_tail: Box<Node<T>>) {
-        let raw_tail: *mut _ = &mut *new_tail;
-
-        if !self.tail.is_null() {
-            unsafe {
-                (*self.tail).next = Some(new_tail);
-            }
-        } else {
-            self.head = Some(new_tail);
-        }
-
-        self.tail = raw_tail;
-    }
-
-    pub fn pop_front(&mut self) -> Option<Box<Node<T>>> {
-        self.head.take().map(|mut head| {
-            std::mem::swap(&mut self.head, &mut head.next);
-
-            if self.head.is_none() {
-                self.tail = ptr::null_mut();
-            }
-
-            head
-        })
-    }
-
-    pub fn peek_front(&self) -> Option<&T> {
-        self.head.as_ref().map(|node| &node.elem)
-    }
-
-    pub fn peek_front_mut(&mut self) -> Option<&mut T> {
-        self.head.as_mut().map(|node| &mut node.elem)
-    }
-
+    /// Convert the list into an iterator.
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter(self)
     }
 
+    /// Get an iterator to references of items in the list.
     pub fn iter(&self) -> Iter<T> {
         Iter {
             next: self.head.as_ref().map(|node| &**node),
         }
     }
 
+    /// Get an iterator to mutable references of items in the list.
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut {
             next: self.head.as_mut().map(|node| &mut **node),
@@ -186,6 +303,7 @@ impl<T> List<T> {
 }
 
 impl<T> Drop for List<T> {
+    /// Drop the contents of the list
     fn drop(&mut self) {
         let mut cur_link = self.head.take();
         while let Some(mut boxed_node) = cur_link {
@@ -195,10 +313,58 @@ impl<T> Drop for List<T> {
 }
 
 impl<T: PartialOrd> List<T> {
+    /// Insert sorted.
+    ///
+    /// # Remarks
+    ///
+    /// Assumes the list is sorted, the new_node will be inserted before the first node that's
+    /// value is greater than or equal to the inserted node's value.
+    ///
+    /// # Examples
+    ///
+    ///
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![0,1,3,-1]);
+    /// l.insert_sorted(Node::new_boxed(2));
+    ///
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&2));
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), Some(&-1));
+    /// assert_eq!(it.next(), None);
+    ///
+    /// ```
     pub fn insert_sorted(&mut self, new_node: Box<Node<T>>) {
         self.insert(new_node, |a, b| a < b);
     }
 
+    /// Sort a list.
+    ///
+    /// # Examples
+    ///
+    ///
+    /// ```
+    /// use llist::Node;
+    /// use llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![0,1,3,-1]);
+    /// l.sort();
+    ///
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&-1));
+    /// assert_eq!(it.next(), Some(&0));
+    /// assert_eq!(it.next(), Some(&1));
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), None);
+    ///
+    /// ```
     pub fn sort(&mut self) {
         let mut other = List::new();
         //simply swap our head/tail with other and then append
@@ -212,8 +378,9 @@ impl<T: PartialOrd> List<T> {
 
 /// Create a List<T> from anything that implements IntoIterator<Item=T>
 ///
-/// Note:
-/// This does allocate boxed nodes.
+/// # Remarks
+///
+/// This allocates boxed Nodes.
 ///
 impl<T> FromIterator<T> for List<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
