@@ -244,6 +244,7 @@ mod test {
     use super::Node;
     use std::ops::Deref;
     use std::iter::FromIterator;
+    use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
     #[test]
     fn basics() {
@@ -681,5 +682,43 @@ mod test {
             assert_eq!(iter.next(), Some(&2084));
             assert_eq!(iter.next(), None);
         }
+    }
+    // copied/edited from crossbeam's arc_cell test
+    #[test]
+    fn drops() {
+        static DROPS: AtomicUsize = ATOMIC_USIZE_INIT;
+
+        struct Foo;
+
+        impl Drop for Foo {
+            fn drop(&mut self) {
+                DROPS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+
+        assert_eq!(DROPS.load(Ordering::SeqCst), 0);
+
+        let mut l = List::new();
+        for _ in 1..11 {
+            let n = Node::new_boxed(Foo);
+            l.push_front(n);
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 0);
+
+        {
+            let n = l.pop_front();
+            assert!(n.is_some());
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+        assert_eq!(l.iter().count(), 9);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 1);
+
+        drop(l);
+        assert_eq!(DROPS.load(Ordering::SeqCst), 10);
+
+        {
+            let _ = Node::new_boxed(Foo);
+        }
+        assert_eq!(DROPS.load(Ordering::SeqCst), 11);
     }
 }
