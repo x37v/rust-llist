@@ -1,5 +1,5 @@
 [package]
-name = "llist"
+name = "xnor_llist"
 version = "0.1.0"
 authors = ["Alex Norman <alex@x37v.info>"]
 

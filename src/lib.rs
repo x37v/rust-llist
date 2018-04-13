@@ -121,8 +121,8 @@ impl<T> List<T> {
     /// insert reverse sorted
     ///
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     ///
     /// let mut l = List::new();
     /// l.push_front(Node::new_boxed(2));
@@ -174,8 +174,8 @@ impl<T> List<T> {
     ///
     /// split at the 8
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     /// use std::iter::FromIterator;
     ///
     /// let mut l = List::from_iter(vec![2,0,8,4]);
@@ -225,8 +225,8 @@ impl<T> List<T> {
     /// # Example
     ///
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     /// use std::iter::FromIterator;
     ///
     /// let mut l = List::from_iter(vec![2,0]);
@@ -261,8 +261,8 @@ impl<T> List<T> {
     /// # Example
     ///
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     /// use std::iter::FromIterator;
     ///
     /// let mut l = List::from_iter(vec![2,0]);
@@ -324,8 +324,8 @@ impl<T: PartialOrd> List<T> {
     ///
     ///
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     /// use std::iter::FromIterator;
     ///
     /// let mut l = List::from_iter(vec![0,1,3,-1]);
@@ -350,8 +350,8 @@ impl<T: PartialOrd> List<T> {
     ///
     ///
     /// ```
-    /// use llist::Node;
-    /// use llist::List;
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
     /// use std::iter::FromIterator;
     ///
     /// let mut l = List::from_iter(vec![0,1,3,-1]);
