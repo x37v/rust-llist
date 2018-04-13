@@ -2,7 +2,7 @@
 //Copyright (c) 2015 Alexis Beingessner
 
 #![feature(nll)]
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::ptr;
 use std::iter::FromIterator;
 
@@ -45,6 +45,13 @@ impl<T> Deref for Node<T> {
     /// Get a reference to the item held by this node.
     fn deref(&self) -> &T {
         &self.elem
+    }
+}
+
+impl<T> DerefMut for Node<T> {
+    /// Get a mutable reference to the item held by this node.
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.elem
     }
 }
 
@@ -519,6 +526,42 @@ mod test {
             assert_eq!(iter.next(), Some(&1));
             assert_eq!(iter.next(), Some(&7));
         }
+    }
+
+    #[test]
+    fn pop_then_push() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+        assert_eq!(list.iter().count(), 3);
+
+        let mut node = list.pop_front().unwrap();
+        **node = 23;
+        list.push_back(node);
+        assert_eq!(list.iter().count(), 3);
+
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&4));
+        assert_eq!(iter.next(), Some(&23));
+    }
+
+    #[test]
+    fn peek_front_mut() {
+        let mut list = List::from_iter(vec![2, 3, 4]);
+        assert_eq!(list.iter().count(), 3);
+
+        //modify the first item
+        {
+            let x = list.peek_front_mut();
+            assert!(x.is_some());
+            let r = x.unwrap();
+            *r = 23;
+        }
+        assert_eq!(list.iter().count(), 3);
+
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&23));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&4));
     }
 
     #[test]
