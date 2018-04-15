@@ -172,8 +172,8 @@ impl<T> List<T> {
     ///
     /// # Remarks
     ///
-    /// The function takes 2 references, your new_node's value is always the first and a node in
-    /// the list is the second. When the function evaluates to true the new_node is placed before
+    /// The function takes 2 references, your `new_node`'s value is always the first and a node in
+    /// the list is the second. When the function evaluates to `true` the `new_node` is placed before
     /// the second node in the function.
     ///
     /// # Examples
@@ -288,7 +288,11 @@ impl<T> List<T> {
         list
     }
 
-    /// Append a list to another list.
+    /// Add the contents of another list to the end of this list.
+    ///
+    /// # Remarks
+    ///
+    /// This is can be done without iteration, it is fast.
     ///
     /// # Example
     ///
@@ -326,6 +330,10 @@ impl<T> List<T> {
     }
 
     /// Add the contents of another list to the front of this list.
+    ///
+    /// # Remarks
+    ///
+    /// This is can be done without iteration, it is fast.
     ///
     /// # Example
     ///
