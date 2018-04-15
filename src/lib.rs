@@ -6,6 +6,7 @@ use std::ops::{Deref, DerefMut};
 use std::ptr;
 use std::iter::FromIterator;
 
+#[derive(Debug)]
 pub struct List<T> {
     head: Link<T>,
     count: usize,
