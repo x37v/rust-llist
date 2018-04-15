@@ -114,6 +114,46 @@ impl<T> List<T> {
         })
     }
 
+    /// Pop's elements from the front of the list while the given function, `func` returns true.
+    ///
+    /// # Arguments
+    /// * `func` - A function that is given a reference to the item the front node holds. If the
+    /// func returns true then the front node is popped and returned, otherwise None is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use xnor_llist::Node;
+    /// use xnor_llist::List;
+    /// use std::iter::FromIterator;
+    ///
+    /// let mut l = List::from_iter(vec![1,2,3,4]);
+    ///
+    /// while let Some(node) = l.pop_front_while(|i| *i < 3) {
+    ///     println!("{}", **node)
+    /// }
+    ///
+    /// let mut it = l.iter();
+    /// assert_eq!(it.next(), Some(&3));
+    /// assert_eq!(it.next(), Some(&4));
+    /// assert_eq!(it.next(), None);
+    /// ```
+    pub fn pop_front_while<F>(&mut self, func: F) -> Option<Box<Node<T>>>
+    where
+        F: Fn(&T) -> bool,
+    {
+        match self.peek_front() {
+            None => None,
+            Some(ref node) => {
+                if func(node.deref().deref()) {
+                    self.pop_front()
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Get a reference to the item held by the node at the front of the list, if there is one.
     pub fn peek_front(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.elem)
@@ -1024,8 +1064,13 @@ mod test {
         assert_eq!(DROPS.load(Ordering::SeqCst), 0);
 
         {
-            let n = l.pop_front();
+            let mut n = l.pop_front();
             assert!(n.is_some());
+
+            //push one back
+            n = l.pop_front();
+            assert!(n.is_some());
+            l.push_front(n.unwrap())
         }
         assert_eq!(DROPS.load(Ordering::SeqCst), 1);
         assert_eq!(l.iter().count(), 9);
@@ -1165,5 +1210,42 @@ mod test {
         if let Err(e) = child.join() {
             panic!(e);
         }
+    }
+
+    #[test]
+    fn pop_front_while() {
+        let mut l = List::from_iter(vec![1, 2, 3, 4]);
+        assert_eq!(l.count(), 4);
+
+        //grab nothing
+        assert!(l.pop_front_while(|_| false).is_none());
+        assert!(l.pop_front_while(|_| false).is_none());
+        assert_eq!(l.count(), 4);
+
+        //grab all
+        assert_eq!(**l.pop_front_while(|_| true).unwrap(), 1);
+        assert_eq!(**l.pop_front_while(|_| true).unwrap(), 2);
+        assert_eq!(**l.pop_front_while(|_| true).unwrap(), 3);
+        assert_eq!(**l.pop_front_while(|_| true).unwrap(), 4);
+        assert!(l.pop_front_while(|_| true).is_none());
+        assert!(l.pop_front_while(|_| true).is_none());
+        assert_eq!(l.count(), 0);
+
+        //mid way
+        l = List::from_iter(vec![1, 2, 3, 4]);
+        assert_eq!(l.count(), 4);
+        assert_eq!(**l.pop_front_while(|v| *v < 3).unwrap(), 1);
+        assert_eq!(**l.pop_front_while(|v| *v < 3).unwrap(), 2);
+        assert!(l.pop_front_while(|v| *v < 3).is_none());
+        assert!(l.pop_front_while(|v| *v < 3).is_none());
+        assert_eq!(l.count(), 2);
+
+        assert!(l.pop_front_while(|_| false).is_none());
+        assert_eq!(l.count(), 2);
+        assert!(l.pop_front_while(|_| true).is_some());
+        assert!(l.pop_front_while(|_| true).is_some());
+        assert_eq!(l.count(), 0);
+        assert!(l.pop_front_while(|_| true).is_none());
+        assert_eq!(l.count(), 0);
     }
 }
