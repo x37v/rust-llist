@@ -2,9 +2,9 @@
 //Copyright (c) 2015 Alexis Beingessner
 
 #![feature(nll)]
+use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
-use std::iter::FromIterator;
 
 #[derive(Debug)]
 pub struct List<T> {
@@ -419,7 +419,7 @@ impl<T: PartialOrd> List<T> {
     ///
     /// ```
     pub fn insert_sorted(&mut self, new_node: Box<Node<T>>) {
-        self.insert(new_node, |a, b| a < b);
+        self.insert(new_node, |a, b| a.lt(&b));
     }
 
     /// Sort a list.
@@ -500,20 +500,16 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
-unsafe impl<T> Send for List<T>
-where
-    T: Send,
-{
-}
+unsafe impl<T> Send for List<T> where T: Send {}
 
 #[cfg(test)]
 mod test {
-    use std::thread;
     use super::List;
     use super::Node;
-    use std::ops::Deref;
     use std::iter::FromIterator;
+    use std::ops::Deref;
     use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+    use std::thread;
 
     #[test]
     fn basics() {
@@ -611,6 +607,14 @@ mod test {
             assert_eq!(iter.next(), Some(&7));
         }
         assert_eq!(list.count(), 6);
+    }
+
+    #[test]
+    fn node() {
+        let mut n = Node::new_boxed(1);
+        assert_eq!(1, **n);
+        **n = 3;
+        assert_eq!(3, **n);
     }
 
     #[test]
