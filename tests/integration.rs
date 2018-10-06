@@ -1,8 +1,8 @@
 extern crate xnor_llist;
 
-use xnor_llist::Node;
-use xnor_llist::List;
 use std::ops::Deref;
+use xnor_llist::List;
+use xnor_llist::Node;
 
 #[test]
 fn can() {
