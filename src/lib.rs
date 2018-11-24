@@ -502,6 +502,18 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 unsafe impl<T> Send for List<T> where T: Send {}
 
+impl <T> Default for List<T> where T: Default {
+    fn default() -> Self {
+        List::new()
+    }
+}
+
+impl<T> Default for Box<Node<T>> where T: Default {
+    fn default() -> Self {
+        Node::new_boxed(Default::default())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::List;
@@ -1260,5 +1272,19 @@ mod test {
         assert_eq!(l.count(), 0);
         assert!(l.pop_front_while(|_| true).is_none());
         assert_eq!(l.count(), 0);
+    }
+
+    #[test]
+    fn default() {
+        let mut l: List<usize> = Default::default();
+        l.push_front(Default::default());
+        assert_eq!(l.count(), 1);
+        assert_eq!(l.peek_front().unwrap(), &0usize);
+
+        l.push_front(Default::default());
+        assert_eq!(l.count(), 2);
+        assert_eq!(l.pop_front().unwrap().deref().deref(), &0usize);
+        assert_eq!(l.pop_front().unwrap().deref().deref(), &0usize);
+        assert!(l.pop_front().is_none());
     }
 }
