@@ -502,13 +502,19 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
 unsafe impl<T> Send for List<T> where T: Send {}
 
-impl <T> Default for List<T> where T: Default {
+impl<T> Default for List<T>
+where
+    T: Default,
+{
     fn default() -> Self {
         List::new()
     }
 }
 
-impl<T> Default for Box<Node<T>> where T: Default {
+impl<T> Default for Box<Node<T>>
+where
+    T: Default,
+{
     fn default() -> Self {
         Node::new_boxed(Default::default())
     }
