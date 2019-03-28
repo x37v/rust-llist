@@ -1,7 +1,6 @@
 //based on work
 //Copyright (c) 2015 Alexis Beingessner
 
-#![feature(nll)]
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::ptr;
